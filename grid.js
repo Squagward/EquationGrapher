@@ -23,15 +23,13 @@ export default class Grid {
     this.xMax = xMax;
     this.yMin = yMin;
     this.yMax = yMax;
-    this.steps = 300;
+    this.steps = 1000;
 
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
   }
 
   #drawGrid(xStep, yStep) {
-    this.background.draw();
-
     if (xStep) {
       for (let x = this.left; x <= this.right; x += xStep) {
         Renderer.drawLine(Renderer.BLACK, x, this.top, x, this.bottom, 1);
@@ -56,8 +54,9 @@ export default class Grid {
     }
   }
 
-  draw(axes = true) {
-    this.#drawGrid(this.xStep, this.yStep);
+  draw(grid, axes) {
+    this.background.draw();
+    if (grid) this.#drawGrid(this.xStep, this.yStep);
     if (axes) this.#drawAxes();
   }
 
@@ -83,14 +82,20 @@ export default class Grid {
     }
 
     for (let i = 0; i < this.lines.length - 1; i++) {
-      Renderer.drawLine(
-        color,
-        this.lines[i].x,
-        this.lines[i].y,
-        this.lines[i + 1].x,
-        this.lines[i + 1].y,
-        2
-      );
+      if (
+        this.lines[i].y >= this.top &&
+        this.lines[i].y <= this.bottom &&
+        this.lines[i + 1].y >= this.top &&
+        this.lines[i + 1].y <= this.bottom
+      )
+        Renderer.drawLine(
+          color,
+          this.lines[i].x,
+          this.lines[i].y,
+          this.lines[i + 1].x,
+          this.lines[i + 1].y,
+          2
+        );
     }
   }
 }

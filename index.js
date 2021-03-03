@@ -3,10 +3,10 @@
 
 import Grid from "./grid";
 
-const g = new Grid(-10, 10, -10, 10);
+const g = new Grid(0, 10, -10, 10);
 register("renderOverlay", () => {
   if (g.gui.isOpen()) {
-    g.draw();
+    g.draw(false, true);
     g.graph("sin(x)*x^2", Renderer.BLUE);
     // g.graph("sin(x)", Renderer.AQUA);
   }
