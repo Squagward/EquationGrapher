@@ -1,0 +1,9 @@
+{
+  "name": "Graph",
+  "creator": "Squagward",
+  "description": "Graphing calculator for ChatTriggers. /graph to show the graph",
+  "helpMessage": "\n/graph\n",
+  "version": "0.1.0",
+	"entry": "index.js",
+  "$schema": "../CTAutocomplete/schema.json"
+}
