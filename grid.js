@@ -1,4 +1,6 @@
+import * as Elementa from "Elementa/index";
 import Formula from "../fparser";
+const Color = java.awt.Color;
 
 export default class Grid {
   constructor(xMin, xMax, yMin, yMax) {
@@ -16,7 +18,12 @@ export default class Grid {
     this.width = this.right - this.left;
     this.height = this.bottom - this.top;
 
-    this.background = new Rectangle(Renderer.color(200, 200, 200), this.left, this.top, this.width, this.height);
+    this.background = new Elementa.UIBlock(new Color(0.7, 0.7, 0.7))
+      .setX(this.left.pixels())
+      .setY(this.top.pixels())
+      .setWidth(this.width.pixels())
+      .setHeight(this.height.pixels());
+
     this.gui = new Gui();
 
     this.xMin = xMin;
@@ -27,19 +34,47 @@ export default class Grid {
 
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
+
+
+    this.input = new Elementa.UITextInput("Input equation")
+      .setX((3).pixels())
+      .setY(new Elementa.CenterConstraint())
+      .setWidth((100).pixels())
+      .setHeight((20).pixels());
+
+    this.inputBackground = new Elementa.UIRoundedRectangle(2)
+      .setColor(new Elementa.ConstantColorConstraint(new Color(0.1, 0.1, 0.1, 1)))
+      .setX((10).pixels())
+      .setY((this.center.y - this.input.getHeight() / 2 - 3).pixels())
+      .setWidth(new Elementa.ChildBasedMaxSizeConstraint())
+      .setHeight(new Elementa.AdditiveConstraint(new Elementa.ChildBasedSizeConstraint(), (6).pixels()))
+      .addChild(this.input);
+
+    this.window = new Elementa.Window()
+      .addChildren(
+        this.background,
+        this.inputBackground
+      );
+
+    this.gui.registerDraw((x, y) => this.draw());
+    this.gui.registerClicked((x, y, b) => this.window.mouseClick(x, y, b));
+    this.gui.registerMouseDragged((x, y, b) => this.window.mouseDrag(x, y, b));
+    this.gui.registerScrolled((x, y, s) => this.window.mouseScroll(s));
+    this.gui.registerMouseReleased((x, y, b) => this.window.mouseRelease());
+    this.gui.registerKeyTyped((char, key) => this.window.keyType(char, key));
   }
 
-  #drawGrid(xStep, yStep) {
-    if (xStep) {
-      for (let x = this.left; x <= this.right; x += xStep) {
-        Renderer.drawLine(Renderer.BLACK, x, this.top, x, this.bottom, 1);
-      }
-    }
+  open() {
+    this.gui.open();
+    this.input.setActive(true);
+  }
 
-    if (yStep) {
-      for (let y = this.top; y <= this.bottom; y += yStep) {
-        Renderer.drawLine(Renderer.BLACK, this.left, y, this.right, y, 1);
-      }
+  #drawTicks(xStep, yStep) {
+    for (let x = this.left; x <= this.right; x += xStep) {
+      Renderer.drawLine(Renderer.BLACK, x, this.center.y - 2, x, this.center.y + 2, 1);
+    }
+    for (let y = this.top; y <= this.bottom; y += yStep) {
+      Renderer.drawLine(Renderer.BLACK, this.center.x - 2, y, this.center.x + 2, y, 1);
     }
   }
 
@@ -54,48 +89,52 @@ export default class Grid {
     }
   }
 
-  draw(grid, axes) {
-    this.background.draw();
-    if (grid) this.#drawGrid(this.xStep, this.yStep);
-    if (axes) this.#drawAxes();
+  draw() {
+    this.window.draw();
+    this.#drawAxes();
+    this.#drawTicks(this.xStep, this.yStep);
+    this.graph(Renderer.AQUA);
   }
 
-  graph(eq, color) {
+  graph(color) {
     /**
      * This algorithm was heavily influenced by 
      * https://www.youtube.com/watch?v=E-_Lc6FrDRw
      */
-    const parsed = new Formula(eq);
-    this.lines = [];
+    try {
+      const parsed = new Formula(this.input.getText());
+      this.lines = [];
 
-    for (let i = 0; i < this.steps; i++) {
-      let percentX = i / (this.steps - 1);
-      let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
+      for (let i = 0; i < this.steps; i++) {
+        let percentX = i / (this.steps - 1);
+        let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
 
-      let mathY = parsed.evaluate({ x: mathX });
+        let mathY = parsed.evaluate({ x: mathX });
 
-      let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
-      let x = this.left + percentX * this.width;
-      let y = this.bottom - percentY * this.height;
+        let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
+        let x = this.left + percentX * this.width;
+        let y = this.bottom - percentY * this.height;
 
-      this.lines.push({ x, y });
+        this.lines.push({ x, y });
+      }
+
+      for (let i = 0; i < this.lines.length - 1; i++) {
+        if (
+          this.lines[i].y >= this.top &&
+          this.lines[i].y <= this.bottom &&
+          this.lines[i + 1].y >= this.top &&
+          this.lines[i + 1].y <= this.bottom
+        )
+          Renderer.drawLine(
+            color,
+            this.lines[i].x,
+            this.lines[i].y,
+            this.lines[i + 1].x,
+            this.lines[i + 1].y,
+            2
+          );
+      }
     }
-
-    for (let i = 0; i < this.lines.length - 1; i++) {
-      if (
-        this.lines[i].y >= this.top &&
-        this.lines[i].y <= this.bottom &&
-        this.lines[i + 1].y >= this.top &&
-        this.lines[i + 1].y <= this.bottom
-      )
-        Renderer.drawLine(
-          color,
-          this.lines[i].x,
-          this.lines[i].y,
-          this.lines[i + 1].x,
-          this.lines[i + 1].y,
-          2
-        );
-    }
+    catch (e) { }
   }
 }
