@@ -1,5 +1,5 @@
 import * as Elementa from "Elementa/index";
-import Formula from "../fparser";
+import { Formula } from "../fparser";
 const Color = java.awt.Color;
 
 export default class Grid {
@@ -19,10 +19,10 @@ export default class Grid {
     this.height = this.bottom - this.top;
 
     this.background = new Elementa.UIBlock(new Color(0.7, 0.7, 0.7))
-      .setX(this.left.pixels())
-      .setY(this.top.pixels())
-      .setWidth(this.width.pixels())
-      .setHeight(this.height.pixels());
+      .setX(new Elementa.CenterConstraint())
+      .setY(new Elementa.CenterConstraint())
+      .setWidth(new Elementa.PixelConstraint(this.width))
+      .setHeight(new Elementa.PixelConstraint(this.height));
 
     this.gui = new Gui();
 
@@ -36,18 +36,22 @@ export default class Grid {
     this.yStep = this.height / (this.yMax - this.yMin);
 
 
-    this.input = new Elementa.UITextInput("Input equation")
-      .setX((3).pixels())
+    this.input = new Elementa.UITextInput("")
+      .setX(new Elementa.PixelConstraint(3, false))
       .setY(new Elementa.CenterConstraint())
-      .setWidth((100).pixels())
-      .setHeight((20).pixels());
+      .setWidth(new Elementa.PixelConstraint(100, false))
+      .setHeight(new Elementa.PixelConstraint(20, false));
 
     this.inputBackground = new Elementa.UIRoundedRectangle(2)
       .setColor(new Elementa.ConstantColorConstraint(new Color(0.1, 0.1, 0.1, 1)))
-      .setX((10).pixels())
-      .setY((this.center.y - this.input.getHeight() / 2 - 3).pixels())
-      .setWidth(new Elementa.ChildBasedMaxSizeConstraint())
-      .setHeight(new Elementa.AdditiveConstraint(new Elementa.ChildBasedSizeConstraint(), (6).pixels()))
+      .setX(new Elementa.PixelConstraint(10, false))
+      .setY(new Elementa.PixelConstraint(this.center.y - this.input.getHeight() / 2 - 3, false)) // 3 margin
+      .setWidth(new Elementa.AdditiveConstraint(
+        new Elementa.ChildBasedMaxSizeConstraint(), new Elementa.PixelConstraint(6, false)
+      ))
+      .setHeight(new Elementa.AdditiveConstraint(
+        new Elementa.ChildBasedSizeConstraint(), new Elementa.PixelConstraint(6, false)
+      ))
       .addChild(this.input);
 
     this.window = new Elementa.Window()
@@ -80,11 +84,11 @@ export default class Grid {
 
   #drawAxes() {
     if (this.xMin <= 0 && this.xMax >= 0) { // draw y axis
-      const xOffset = this.left + (0 - this.xMin) * this.xStep;
+      const xOffset = this.left + (-this.xMin) * this.xStep;
       Renderer.drawLine(Renderer.RED, xOffset, this.top, xOffset, this.bottom, 1);
     }
     if (this.yMin <= 0 && this.yMax >= 0) { // draw x axis
-      const yOffset = this.bottom - (0 - this.yMin) * this.yStep;
+      const yOffset = this.bottom - (-this.yMin) * this.yStep;
       Renderer.drawLine(Renderer.RED, this.left, yOffset, this.right, yOffset, 1);
     }
   }
