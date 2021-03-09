@@ -34,7 +34,7 @@ export default class Grid {
 
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
-
+    this.lines = [];
 
     this.input = new Elementa.UITextInput("")
       .setX(new Elementa.PixelConstraint(3, false))
@@ -73,30 +73,30 @@ export default class Grid {
     this.input.setActive(true);
   }
 
-  #drawTicks(xStep, yStep) {
-    for (let x = this.left; x <= this.right; x += xStep) {
-      Renderer.drawLine(Renderer.BLACK, x, this.center.y - 2, x, this.center.y + 2, 1);
-    }
-    for (let y = this.top; y <= this.bottom; y += yStep) {
-      Renderer.drawLine(Renderer.BLACK, this.center.x - 2, y, this.center.x + 2, y, 1);
-    }
-  }
+  drawAxes() {
+    const xOffset = this.left + (-this.xMin) * this.xStep; // x val of y axis
+    const yOffset = this.bottom - (-this.yMin) * this.yStep; // y val of x axis
 
-  #drawAxes() {
     if (this.xMin <= 0 && this.xMax >= 0) { // draw y axis
-      const xOffset = this.left + (-this.xMin) * this.xStep;
       Renderer.drawLine(Renderer.RED, xOffset, this.top, xOffset, this.bottom, 1);
+
+      for (let y = this.top; y <= this.bottom; y += this.yStep) {
+        Renderer.drawLine(Renderer.BLACK, xOffset - 2, y, xOffset + 2, y, 1);
+      }
     }
+
     if (this.yMin <= 0 && this.yMax >= 0) { // draw x axis
-      const yOffset = this.bottom - (-this.yMin) * this.yStep;
       Renderer.drawLine(Renderer.RED, this.left, yOffset, this.right, yOffset, 1);
+
+      for (let x = this.left; x <= this.right; x += this.xStep) {
+        Renderer.drawLine(Renderer.BLACK, x, yOffset - 2, x, yOffset + 2, 1);
+      }
     }
   }
 
   draw() {
     this.window.draw();
-    this.#drawAxes();
-    this.#drawTicks(this.xStep, this.yStep);
+    this.drawAxes();
     this.graph(Renderer.AQUA);
   }
 
