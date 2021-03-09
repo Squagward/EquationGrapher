@@ -30,7 +30,6 @@ export default class Grid {
     this.xMax = xMax;
     this.yMin = yMin;
     this.yMax = yMax;
-    this.steps = 1000;
 
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
@@ -66,6 +65,10 @@ export default class Grid {
     this.gui.registerScrolled((x, y, s) => this.window.mouseScroll(s));
     this.gui.registerMouseReleased((x, y, b) => this.window.mouseRelease());
     this.gui.registerKeyTyped((char, key) => this.window.keyType(char, key));
+
+    register("scrolled", (mouseX, mouseY, direction) => { // 1 is zoom in, -1 zoom out
+      // plan on adding zoom capability
+    });
   }
 
   open() {
@@ -109,8 +112,8 @@ export default class Grid {
       const parsed = new Formula(this.input.getText());
       this.lines = [];
 
-      for (let i = 0; i < this.steps; i++) {
-        let percentX = i / (this.steps - 1);
+      for (let i = 0; i < this.width; i++) {
+        let percentX = i / (this.width - 1);
         let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
 
         let mathY = parsed.evaluate({ x: mathX });
