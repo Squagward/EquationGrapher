@@ -31,6 +31,9 @@ export default class Grid {
     this.yMin = yMin;
     this.yMax = yMax;
 
+    this.xOffset = MathLib.map(0, this.xMin, this.xMax, this.left, this.right);
+    this.yOffset = MathLib.map(0, this.yMin, this.yMax, this.bottom, this.top);
+
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
     this.lines = [];
@@ -64,10 +67,31 @@ export default class Grid {
     this.gui.registerMouseDragged((x, y, b) => this.window.mouseDrag(x, y, b));
     this.gui.registerScrolled((x, y, s) => this.window.mouseScroll(s));
     this.gui.registerMouseReleased((x, y, b) => this.window.mouseRelease());
-    this.gui.registerKeyTyped((char, key) => this.window.keyType(char, key));
+    this.gui.registerKeyTyped((char, key) => {
+      this.window.keyType(char, key);
+      if (key === Keyboard.KEY_DELETE) this.input.setText("");
+    });
 
-    register("scrolled", (mouseX, mouseY, direction) => { // 1 is zoom in, -1 zoom out
+    this.gui.registerScrolled((mouseX, mouseY, direction) => { // 1 is zoom in, -1 zoom out
       // plan on adding zoom capability
+      switch (direction) {
+        case -1:
+          this.xMin *= 1.25;
+          this.xMax *= 1.25;
+          this.yMin *= 1.25;
+          this.yMax *= 1.25;
+          break;
+        case 1:
+          this.xMin *= .8;
+          this.xMax *= .8;
+          this.yMin *= .8;
+          this.yMax *= .8;
+          break;
+      }
+      this.xStep = this.width / (this.xMax - this.xMin);
+      this.yStep = this.height / (this.yMax - this.yMin);
+      this.xOffset = MathLib.map(0, this.xMin, this.xMax, this.left, this.right);
+      this.yOffset = MathLib.map(0, this.yMin, this.yMax, this.bottom, this.top);
     });
   }
 
@@ -77,22 +101,25 @@ export default class Grid {
   }
 
   drawAxes() {
-    const xOffset = this.left + (-this.xMin) * this.xStep; // x val of y axis
-    const yOffset = this.bottom - (-this.yMin) * this.yStep; // y val of x axis
-
     if (this.xMin <= 0 && this.xMax >= 0) { // draw y axis
-      Renderer.drawLine(Renderer.RED, xOffset, this.top, xOffset, this.bottom, 1);
+      Renderer.drawLine(Renderer.RED, this.xOffset, this.top, this.xOffset, this.bottom, 1);
 
-      for (let y = this.top; y <= this.bottom; y += this.yStep) {
-        Renderer.drawLine(Renderer.BLACK, xOffset - 2, y, xOffset + 2, y, 1);
+      for (let y = this.yOffset; y >= this.top; y -= this.yStep) { // ticks across y axis (0, inf)
+        Renderer.drawLine(Renderer.BLACK, this.xOffset - 2, y, this.xOffset + 2, y, 1);
+      }
+      for (let y = this.yOffset; y <= this.bottom; y += this.yStep) { // ticks across y axis (-inf, 0)
+        Renderer.drawLine(Renderer.BLACK, this.xOffset - 2, y, this.xOffset + 2, y, 1);
       }
     }
 
     if (this.yMin <= 0 && this.yMax >= 0) { // draw x axis
-      Renderer.drawLine(Renderer.RED, this.left, yOffset, this.right, yOffset, 1);
+      Renderer.drawLine(Renderer.RED, this.left, this.yOffset, this.right, this.yOffset, 1);
 
-      for (let x = this.left; x <= this.right; x += this.xStep) {
-        Renderer.drawLine(Renderer.BLACK, x, yOffset - 2, x, yOffset + 2, 1);
+      for (let x = this.xOffset; x <= this.right; x += this.xStep) { // ticks across x axis (0, inf)
+        Renderer.drawLine(Renderer.BLACK, x, this.yOffset - 2, x, this.yOffset + 2, 1);
+      }
+      for (let x = this.xOffset; x >= this.left; x -= this.xStep) { // ticks across x axis (-inf, 0)
+        Renderer.drawLine(Renderer.BLACK, x, this.yOffset - 2, x, this.yOffset + 2, 1);
       }
     }
   }
