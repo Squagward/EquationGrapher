@@ -3,7 +3,7 @@ import { Formula } from "../fparser";
 const Color = java.awt.Color;
 
 export default class Grid {
-  constructor(xMin, xMax, yMin, yMax) {
+  constructor() {
     this.center = {
       x: Renderer.screen.getWidth() / 2,
       y: Renderer.screen.getHeight() / 2
@@ -26,16 +26,18 @@ export default class Grid {
 
     this.gui = new Gui();
 
-    this.xMin = xMin;
-    this.xMax = xMax;
-    this.yMin = yMin;
-    this.yMax = yMax;
+    this.xMin = -10;
+    this.xMax = 10;
+    this.yMin = -10;
+    this.yMax = 10;
 
     this.xOffset = MathLib.map(0, this.xMin, this.xMax, this.left, this.right);
     this.yOffset = MathLib.map(0, this.yMin, this.yMax, this.bottom, this.top);
 
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
+    this.xTicks = [];
+    this.yTicks = [];
     this.lines = [];
 
     this.input = new Elementa.UITextInput("")
@@ -62,14 +64,29 @@ export default class Grid {
         this.inputBackground
       );
 
-    this.gui.registerDraw((x, y) => this.draw());
-    this.gui.registerClicked((x, y, b) => this.window.mouseClick(x, y, b));
-    this.gui.registerMouseDragged((x, y, b) => this.window.mouseDrag(x, y, b));
-    this.gui.registerScrolled((x, y, s) => this.window.mouseScroll(s));
-    this.gui.registerMouseReleased((x, y, b) => this.window.mouseRelease());
+    this.graphing = false;
+
+    this.text = new Display()
+      .setTextColor(Renderer.BLUE)
+      .setBackgroundColor(Renderer.color(25, 25, 25, 100))
+      .setBackground(DisplayHandler.Background.FULL);
+
     this.gui.registerKeyTyped((char, key) => {
       this.window.keyType(char, key);
-      if (key === Keyboard.KEY_DELETE) this.input.setText("");
+      switch (key) {
+        case Keyboard.KEY_RETURN:
+          this.graphing = true;
+          this.recalculatePoints();
+          this.text.setShouldRender(true);
+          break;
+        case Keyboard.KEY_DELETE:
+          this.input.setText("");
+        default:
+          this.graphing = false;
+          this.lines = [];
+          this.text.setShouldRender(false);
+          break;
+      }
     });
 
     this.gui.registerScrolled((mouseX, mouseY, direction) => { // 1 is zoom in, -1 zoom out
@@ -92,36 +109,68 @@ export default class Grid {
       this.yStep = this.height / (this.yMax - this.yMin);
       this.xOffset = MathLib.map(0, this.xMin, this.xMax, this.left, this.right);
       this.yOffset = MathLib.map(0, this.yMin, this.yMax, this.bottom, this.top);
+
+      this.recalculatePoints();
+      this.recalculateTicks();
+    });
+
+    // move to own functions please this hurts my eyes
+    this.gui.registerDraw((mx, my, pt) => {
+      if (!this.lines.length) return;
+      const val = MathLib.map(mx, this.left, this.right, this.xMin, this.xMax);
+      const closest = this.lines.reduce((a, b) => {
+        return Math.abs(b.mathX - val) < Math.abs(a.x - val)
+          ? { x: b.mathX, y: b.mathY }
+          : { x: a.x, y: a.y };
+      });
+      this.text
+        .setLine(0, `(${closest.x.toFixed(3)}, ${closest.y.toFixed(3)})`)
+        .setRenderLoc(
+          MathLib.clamp(
+            this.graphCoordsToScreenCoords(closest.x, closest.y).x,
+            this.left,
+            this.right
+          ),
+          MathLib.clamp(
+            this.graphCoordsToScreenCoords(closest.x, closest.y).y + 10,
+            this.top,
+            this.bottom + 10
+          )
+        );
+      Renderer.drawCircle(
+        Renderer.GOLD,
+        this.graphCoordsToScreenCoords(closest.x, closest.y).x,
+        this.graphCoordsToScreenCoords(closest.x, closest.y).y,
+        3,
+        10
+      );
     });
   }
 
   open() {
     this.gui.open();
-    this.input.setActive(true);
+    this.drawAxes();
+    this.recalculateTicks();
+    this.input
+      .setActive(true);
+    this.input
+      .setText("");
   }
 
   drawAxes() {
     if (this.xMin <= 0 && this.xMax >= 0) { // draw y axis
       Renderer.drawLine(Renderer.RED, this.xOffset, this.top, this.xOffset, this.bottom, 1);
-
-      for (let y = this.yOffset; y >= this.top; y -= this.yStep) { // ticks across y axis (0, inf)
-        Renderer.drawLine(Renderer.BLACK, this.xOffset - 2, y, this.xOffset + 2, y, 1);
-      }
-      for (let y = this.yOffset; y <= this.bottom; y += this.yStep) { // ticks across y axis (-inf, 0)
-        Renderer.drawLine(Renderer.BLACK, this.xOffset - 2, y, this.xOffset + 2, y, 1);
-      }
     }
-
     if (this.yMin <= 0 && this.yMax >= 0) { // draw x axis
       Renderer.drawLine(Renderer.RED, this.left, this.yOffset, this.right, this.yOffset, 1);
-
-      for (let x = this.xOffset; x <= this.right; x += this.xStep) { // ticks across x axis (0, inf)
-        Renderer.drawLine(Renderer.BLACK, x, this.yOffset - 2, x, this.yOffset + 2, 1);
-      }
-      for (let x = this.xOffset; x >= this.left; x -= this.xStep) { // ticks across x axis (-inf, 0)
-        Renderer.drawLine(Renderer.BLACK, x, this.yOffset - 2, x, this.yOffset + 2, 1);
-      }
     }
+
+    this.xTicks.forEach(x => {
+      Renderer.drawLine(Renderer.BLACK, x, this.yOffset - 2, x, this.yOffset + 2, 1);
+    });
+    this.yTicks.forEach(y => {
+      Renderer.drawLine(Renderer.BLACK, this.xOffset - 2, y, this.xOffset + 2, y, 1);
+    });
   }
 
   draw() {
@@ -130,45 +179,79 @@ export default class Grid {
     this.graph(Renderer.AQUA);
   }
 
-  graph(color) {
+  recalculateTicks() {
+    this.yTicks = [];
+    this.xTicks = [];
+    if (this.yStep > 7) {
+      for (let y = this.yOffset; y >= this.top; y -= this.yStep) { // ticks across y axis (0, inf)
+        this.yTicks.push(y);
+      }
+      for (let y = this.yOffset; y <= this.bottom; y += this.yStep) { // ticks across y axis (-inf, 0)
+        this.yTicks.push(y);
+      }
+    }
+
+    if (this.xStep > 7) {
+      for (let x = this.xOffset; x <= this.right; x += this.xStep) { // ticks across x axis (0, inf)
+        this.xTicks.push(x);
+      }
+      for (let x = this.xOffset; x >= this.left; x -= this.xStep) { // ticks across x axis (-inf, 0)
+        this.xTicks.push(x);
+      }
+    }
+  }
+
+  recalculatePoints() {
+    this.lines = [];
     /**
      * This algorithm was heavily influenced by 
      * https://www.youtube.com/watch?v=E-_Lc6FrDRw
      */
     try {
-      const parsed = new Formula(this.input.getText());
+      this.parser = new Formula(this.input.getText());
       this.lines = [];
 
       for (let i = 0; i < this.width; i++) {
         let percentX = i / (this.width - 1);
         let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
 
-        let mathY = parsed.evaluate({ x: mathX });
+        let mathY = this.parser.evaluate({ x: mathX });
 
         let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
         let x = this.left + percentX * this.width;
         let y = this.bottom - percentY * this.height;
 
-        this.lines.push({ x, y });
+        this.lines.push({ x, y, mathX, mathY });
       }
+    } catch (e) { }
+  }
 
-      for (let i = 0; i < this.lines.length - 1; i++) {
-        if (
-          this.lines[i].y >= this.top &&
-          this.lines[i].y <= this.bottom &&
-          this.lines[i + 1].y >= this.top &&
-          this.lines[i + 1].y <= this.bottom
-        )
-          Renderer.drawLine(
-            color,
-            this.lines[i].x,
-            this.lines[i].y,
-            this.lines[i + 1].x,
-            this.lines[i + 1].y,
-            2
-          );
-      }
+  graph(color) {
+    if (!this.graphing) return;
+
+    for (let i = 0; i < this.lines.length - 1; i++) {
+      if (
+        this.lines[i].y >= this.top &&
+        this.lines[i].y <= this.bottom &&
+        this.lines[i + 1].y >= this.top &&
+        this.lines[i + 1].y <= this.bottom
+      )
+        Renderer.drawLine(
+          color,
+          this.lines[i].x,
+          this.lines[i].y,
+          this.lines[i + 1].x,
+          this.lines[i + 1].y,
+          2
+        );
     }
-    catch (e) { }
+  }
+
+  graphCoordsToScreenCoords(x, y) {
+    const percentX = (x - this.xMin) / (this.xMax - this.xMin);
+    const percentY = (y - this.yMin) / (this.yMax - this.yMin);
+    const outX = this.left + percentX * this.width;
+    const outY = this.bottom - percentY * this.height;
+    return { x: outX, y: outY };
   }
 }
