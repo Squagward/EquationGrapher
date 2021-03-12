@@ -14,10 +14,3 @@ register("renderOverlay", () => {
 register("command", () => {
   g.open();
 }).setName("graph");
-
-const d = new Display()
-  .setRenderLoc(50, 50);
-register("tick", ticks => {
-  if (ticks % 2 === 0) return;
-  d.setLine(0, `${Client.getFPS()} fps`);
-});

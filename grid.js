@@ -116,7 +116,7 @@ export default class Grid {
 
     // move to own functions please this hurts my eyes
     this.gui.registerDraw((mx, my, pt) => {
-      if (!this.lines.length) return;
+      if (!this.lines.length || !this.graphing) return;
       const val = MathLib.map(mx, this.left, this.right, this.xMin, this.xMax);
       const closest = this.lines.reduce((a, b) => {
         return Math.abs(b.mathX - val) < Math.abs(a.x - val)
