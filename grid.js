@@ -1,6 +1,7 @@
 import * as Elementa from "Elementa/index";
 import { Formula } from "../fparser";
-const Color = java.awt.Color;
+import { createNewInput, getInput } from "./equationBlocks";
+const Color = Java.type("java.awt.Color");
 
 export default class Grid {
   constructor() {
@@ -18,7 +19,7 @@ export default class Grid {
     this.width = this.right - this.left;
     this.height = this.bottom - this.top;
 
-    this.background = new Elementa.UIBlock(new Color(0.7, 0.7, 0.7))
+    this.gridBackground = new Elementa.UIBlock(new Color(0.7, 0.7, 0.7))
       .setX(new Elementa.CenterConstraint())
       .setY(new Elementa.CenterConstraint())
       .setWidth(new Elementa.PixelConstraint(this.width))
@@ -40,28 +41,20 @@ export default class Grid {
     this.yTicks = [];
     this.lines = [];
 
-    this.input = new Elementa.UITextInput("")
-      .setX(new Elementa.PixelConstraint(3, false))
-      .setY(new Elementa.CenterConstraint())
-      .setWidth(new Elementa.PixelConstraint(100, false))
-      .setHeight(new Elementa.PixelConstraint(20, false));
+    this.inputBackground = createNewInput().setY(new Elementa.CenterConstraint());
+    this.equationInput = getInput(this.inputBackground);
 
-    this.inputBackground = new Elementa.UIRoundedRectangle(2)
-      .setColor(new Elementa.ConstantColorConstraint(new Color(0.1, 0.1, 0.1, 1)))
+    this.inputContainer = new Elementa.UIContainer()
       .setX(new Elementa.PixelConstraint(10, false))
-      .setY(new Elementa.PixelConstraint(this.center.y - this.input.getHeight() / 2 - 3, false)) // 3 margin
-      .setWidth(new Elementa.AdditiveConstraint(
-        new Elementa.ChildBasedMaxSizeConstraint(), new Elementa.PixelConstraint(6, false)
-      ))
-      .setHeight(new Elementa.AdditiveConstraint(
-        new Elementa.ChildBasedSizeConstraint(), new Elementa.PixelConstraint(6, false)
-      ))
-      .addChild(this.input);
+      .setY(new Elementa.CenterConstraint())
+      .setWidth(new Elementa.RelativeConstraint())
+      .setHeight(new Elementa.ChildBasedMaxSizeConstraint())
+      .addChild(this.inputBackground);
 
     this.window = new Elementa.Window()
       .addChildren(
-        this.background,
-        this.inputBackground
+        this.gridBackground,
+        this.inputContainer
       );
 
     this.graphing = false;
@@ -73,14 +66,16 @@ export default class Grid {
 
     this.gui.registerKeyTyped((char, key) => {
       this.window.keyType(char, key);
+
       switch (key) {
         case Keyboard.KEY_RETURN:
           this.graphing = true;
           this.recalculatePoints();
           this.text.setShouldRender(true);
+          createNewInput();
           break;
         case Keyboard.KEY_DELETE:
-          this.input.setText("");
+          this.equationInput.setText("");
         default:
           this.graphing = false;
           this.lines = [];
@@ -89,9 +84,9 @@ export default class Grid {
       }
     });
 
-    this.gui.registerScrolled((mouseX, mouseY, direction) => { // 1 is zoom in, -1 zoom out
+    this.gui.registerScrolled((mx, my, dir) => { // 1 is zoom in, -1 zoom out
       // plan on adding zoom capability
-      switch (direction) {
+      switch (dir) {
         case -1:
           this.xMin *= 1.25;
           this.xMax *= 1.25;
@@ -145,16 +140,23 @@ export default class Grid {
         10
       );
     });
+
+    this.gui.registerClicked((mx, my, btn) => {
+      this.graphing = false;
+      this.setAllInactive(this.window);
+      this.window.mouseClick(mx, my, btn);
+    });
   }
 
   open() {
     this.gui.open();
     this.drawAxes();
     this.recalculateTicks();
-    this.input
-      .setActive(true);
-    this.input
-      .setText("");
+  }
+
+  setAllInactive(comp) {
+    if (comp.children.length) comp.children.forEach(child => this.setAllInactive(child));
+    if (comp instanceof Elementa.UITextInput) comp.setActive(false);
   }
 
   drawAxes() {
@@ -208,7 +210,7 @@ export default class Grid {
      * https://www.youtube.com/watch?v=E-_Lc6FrDRw
      */
     try {
-      this.parser = new Formula(this.input.getText());
+      this.parser = new Formula(this.equationInput.getText());
       this.lines = [];
 
       for (let i = 0; i < this.width; i++) {
