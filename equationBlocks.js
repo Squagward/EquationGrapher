@@ -21,7 +21,7 @@ const createNewInput = () => {
       background.setColor(new Elementa.ConstantColorConstraint(new Color(0.3, 0.3, 0.3)));
     })
     .onMouseClick((x, y, btn) => {
-      background.children[0].setActive(true);
+      getInput(background).setActive(true);
     })
     .addChild(
       new Elementa.UITextInput("")
@@ -35,10 +35,12 @@ const createNewInput = () => {
 
 /**
  * 
- * @param {Elementa.UIRoundedRectangle} bg 
- * @returns {Elementa.UITextInput}
+ * @param {Elementa.UIRoundedRectangle} bg background object
+ * @returns {Elementa.UITextInput} the text input
  */
-const getInput = bg => bg.children[0];
+const getInput = bg => {
+  if (bg.children[0] instanceof Elementa.UITextInput) return bg.children[0];
+};
 
 export {
   createNewInput,

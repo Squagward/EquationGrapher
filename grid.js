@@ -1,6 +1,7 @@
 import * as Elementa from "Elementa/index";
 import { Formula } from "../fparser";
 import { createNewInput, getInput } from "./equationBlocks";
+import { addTableRow, clearTable, deleteRow, generateBlock, setRowValue } from "./table";
 const Color = Java.type("java.awt.Color");
 
 export default class Grid {
@@ -27,23 +28,30 @@ export default class Grid {
 
     this.gui = new Gui();
 
+    // default zoom
     this.xMin = -10;
     this.xMax = 10;
     this.yMin = -10;
     this.yMax = 10;
 
+    // get axes at correct locations
     this.xOffset = MathLib.map(0, this.xMin, this.xMax, this.left, this.right);
     this.yOffset = MathLib.map(0, this.yMin, this.yMax, this.bottom, this.top);
 
+    // screen increase per tick
     this.xStep = this.width / (this.xMax - this.xMin);
     this.yStep = this.height / (this.yMax - this.yMin);
     this.xTicks = [];
     this.yTicks = [];
+
+    // array of all the equation lines
     this.lines = [];
 
+    // creating a background to put in equations
     this.inputBackground = createNewInput().setY(new Elementa.CenterConstraint());
     this.equationInput = getInput(this.inputBackground);
 
+    // container holding all of the equation inputs & backgrounds
     this.inputContainer = new Elementa.UIContainer()
       .setX(new Elementa.PixelConstraint(10, false))
       .setY(new Elementa.CenterConstraint())
@@ -51,53 +59,100 @@ export default class Grid {
       .setHeight(new Elementa.ChildBasedMaxSizeConstraint())
       .addChild(this.inputBackground);
 
+    // table of x, y1, y2 etc values
+    this.table = generateBlock();
+    // add x row first
+    addTableRow(this.table, 0, new Color(0, 0, 0));
+
     this.window = new Elementa.Window()
       .addChildren(
         this.gridBackground,
-        this.inputContainer
+        this.inputContainer,
+        this.table
       );
 
     this.graphing = false;
-
-    this.text = new Display()
-      .setTextColor(Renderer.BLUE)
-      .setBackgroundColor(Renderer.color(25, 25, 25, 100))
-      .setBackground(DisplayHandler.Background.FULL);
 
     this.gui.registerKeyTyped((char, key) => {
       this.window.keyType(char, key);
 
       switch (key) {
-        case Keyboard.KEY_RETURN:
+        case Keyboard.KEY_RETURN: {
           this.graphing = true;
-          this.recalculatePoints();
-          this.text.setShouldRender(true);
-          createNewInput();
+          if (this.table.children.length > this.lines.length) {
+            const [r, g, b] = this.calculatePoints();
+            addTableRow(
+              this.table,
+              `Y${this.table.children.length}`,
+              new Color(r / 255, g / 255, b / 255)
+            );
+          }
           break;
-        case Keyboard.KEY_DELETE:
+        }
+        case Keyboard.KEY_DOWN: { // add button to add and delete graphs plssss
+          this.inputContainer.addChild(createNewInput());
+          break;
+        }
+        case Keyboard.KEY_DELETE: {
           this.equationInput.setText("");
-        default:
+          clearTable(this.table);
+        }
+        default: {
+          // stop graphing if any other key is pressed
           this.graphing = false;
           this.lines = [];
-          this.text.setShouldRender(false);
           break;
+        }
       }
     });
 
-    this.gui.registerScrolled((mx, my, dir) => { // 1 is zoom in, -1 zoom out
-      // plan on adding zoom capability
+    this.gui.registerDraw((mx, my, pt) => {
+      // convert mouse x value to graph value
+      const mappedX = MathLib.clampFloat(
+        MathLib.map(mx, this.left, this.right, this.xMin, this.xMax),
+        this.xMin,
+        this.xMax
+      );
+
+      // update the x row on the table
+      setRowValue(this.table, 0, "X", mappedX.toFixed(3));
+
+      this.table.children.forEach((child, index) => {
+        if (index === 0) return;
+
+        const [vals,] = this.lines[index - 1]; // causing issues REEEE
+        //org.mozilla.javascript.EcmaError: TypeError: Cannot read property "0" from undefined (file:/grid.js#122)
+
+        const closest = vals.reduce((a, b) => {
+          return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
+            ? { x: b.mathX, y: b.mathY }
+            : { x: a.x, y: a.y };
+        });
+
+        Renderer.drawCircle(
+          Renderer.DARK_PURPLE,
+          this.graphToScreenCoords(closest.x).x,
+          this.graphToScreenCoords(closest.y).y,
+          3,
+          10
+        );
+        setRowValue(this.table, index, `Y${index}`, closest.y.toFixed(3));
+      });
+    });
+
+    this.gui.registerScrolled((mx, my, dir) => {
       switch (dir) {
         case -1:
-          this.xMin *= 1.25;
-          this.xMax *= 1.25;
-          this.yMin *= 1.25;
-          this.yMax *= 1.25;
+          this.xMin *= 1.2;
+          this.xMax *= 1.2;
+          this.yMin *= 1.2;
+          this.yMax *= 1.2;
           break;
         case 1:
-          this.xMin *= .8;
-          this.xMax *= .8;
-          this.yMin *= .8;
-          this.yMax *= .8;
+          this.xMin *= 5 / 6;
+          this.xMax *= 5 / 6;
+          this.yMin *= 5 / 6;
+          this.yMax *= 5 / 6;
           break;
       }
       this.xStep = this.width / (this.xMax - this.xMin);
@@ -109,40 +164,7 @@ export default class Grid {
       this.recalculateTicks();
     });
 
-    // move to own functions please this hurts my eyes
-    this.gui.registerDraw((mx, my, pt) => {
-      if (!this.lines.length || !this.graphing) return;
-      const val = MathLib.map(mx, this.left, this.right, this.xMin, this.xMax);
-      const closest = this.lines.reduce((a, b) => {
-        return Math.abs(b.mathX - val) < Math.abs(a.x - val)
-          ? { x: b.mathX, y: b.mathY }
-          : { x: a.x, y: a.y };
-      });
-      this.text
-        .setLine(0, `(${closest.x.toFixed(3)}, ${closest.y.toFixed(3)})`)
-        .setRenderLoc(
-          MathLib.clamp(
-            this.graphCoordsToScreenCoords(closest.x, closest.y).x,
-            this.left,
-            this.right
-          ),
-          MathLib.clamp(
-            this.graphCoordsToScreenCoords(closest.x, closest.y).y + 10,
-            this.top,
-            this.bottom + 10
-          )
-        );
-      Renderer.drawCircle(
-        Renderer.GOLD,
-        this.graphCoordsToScreenCoords(closest.x, closest.y).x,
-        this.graphCoordsToScreenCoords(closest.x, closest.y).y,
-        3,
-        10
-      );
-    });
-
     this.gui.registerClicked((mx, my, btn) => {
-      this.graphing = false;
       this.setAllInactive(this.window);
       this.window.mouseClick(mx, my, btn);
     });
@@ -152,6 +174,7 @@ export default class Grid {
     this.gui.open();
     this.drawAxes();
     this.recalculateTicks();
+    if (this.graphing) this.graph();
   }
 
   setAllInactive(comp) {
@@ -178,7 +201,7 @@ export default class Grid {
   draw() {
     this.window.draw();
     this.drawAxes();
-    this.graph(Renderer.AQUA);
+    this.graph();
   }
 
   recalculateTicks() {
@@ -203,15 +226,22 @@ export default class Grid {
     }
   }
 
-  recalculatePoints() {
+  /**
+   * Called only when the user presses enter.
+   * @returns {number[]} colors used for table text color
+   */
+  calculatePoints() {
     this.lines = [];
     /**
      * This algorithm was heavily influenced by 
      * https://www.youtube.com/watch?v=E-_Lc6FrDRw
      */
-    try {
-      this.parser = new Formula(this.equationInput.getText());
-      this.lines = [];
+
+    for (let child of this.inputContainer.children) { // loop through every array of points
+      let input = getInput(child);
+      this.parser = new Formula(input.getText());
+
+      let tempLine = [];
 
       for (let i = 0; i < this.width; i++) {
         let percentX = i / (this.width - 1);
@@ -223,33 +253,77 @@ export default class Grid {
         let x = this.left + percentX * this.width;
         let y = this.bottom - percentY * this.height;
 
-        this.lines.push({ x, y, mathX, mathY });
+        tempLine.push({ x, y, mathX, mathY }); // add the point to the tempLine
       }
-    } catch (e) { }
-  }
 
-  graph(color) {
-    if (!this.graphing) return;
-
-    for (let i = 0; i < this.lines.length - 1; i++) {
-      if (
-        this.lines[i].y >= this.top &&
-        this.lines[i].y <= this.bottom &&
-        this.lines[i + 1].y >= this.top &&
-        this.lines[i + 1].y <= this.bottom
-      )
-        Renderer.drawLine(
-          color,
-          this.lines[i].x,
-          this.lines[i].y,
-          this.lines[i + 1].x,
-          this.lines[i + 1].y,
-          2
-        );
+      let color = this.assignColor();
+      this.lines.push([tempLine, Renderer.color(color.r, color.g, color.b)]); // assign a random color
+      return color;
     }
   }
 
-  graphCoordsToScreenCoords(x, y) {
+  /**
+   * Called whenever the user scrolls. Needs to be a separate function
+   * in order to not have rapid color changing lines
+   */
+  recalculatePoints() {
+    let colors = this.lines.map(([l, c]) => c); // grab the colors for each line then remove lines
+    this.lines = [];
+
+    // rebuild the lines
+    for (let i = 0; i < this.inputContainer.children.length; i++) {
+      let child = this.inputContainer.children[i];
+      let input = getInput(child);
+      this.parser = new Formula(input.getText());
+
+      let tempLine = [];
+
+      for (let i = 0; i < this.width; i++) {
+        let percentX = i / (this.width - 1);
+        let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
+
+        let mathY = this.parser.evaluate({ x: mathX });
+
+        let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
+        let x = this.left + percentX * this.width;
+        let y = this.bottom - percentY * this.height;
+
+        tempLine.push({ x, y, mathX, mathY });
+      }
+      this.lines.push([tempLine, colors[i]]); // assign the color that was there previously
+    }
+  }
+
+  graph() {
+    if (!this.graphing) return;
+    for ([line, color] of this.lines) { // loop through each line on the graph
+      for (let i = 0; i < line.length - 1; i++) {
+        if (
+          line[i].y >= this.top &&      // Checking to make sure the
+          line[i].y <= this.bottom &&   // point is in the bounds
+          line[i + 1].y >= this.top &&  // of the screen.
+          line[i + 1].y <= this.bottom
+        )
+          Renderer.drawLine(
+            color,
+            line[i].x,
+            line[i].y,
+            line[i + 1].x,
+            line[i + 1].y,
+            2
+          );
+      }
+    }
+  }
+
+  assignColor() {
+    let r = Math.random() * 255;
+    let g = Math.random() * 255;
+    let b = Math.random() * 255;
+    return { r, g, b };
+  }
+
+  graphToScreenCoords(x, y) {
     const percentX = (x - this.xMin) / (this.xMax - this.xMin);
     const percentY = (y - this.yMin) / (this.yMax - this.yMin);
     const outX = this.left + percentX * this.width;
