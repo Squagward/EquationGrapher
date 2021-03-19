@@ -20,8 +20,8 @@ const generateBlock = () => {
  * @param {string} rowName the start of the text on that row
  * @param {Color} color
  */
-const addTableRow = (comp, rowName, color) => {
-  const row = new Elementa.UIText(rowName)
+const addTableRow = (comp, color, text = "X") => {
+  const row = new Elementa.UIText(text)
     .setX(new Elementa.PixelConstraint(5, false))
     .setColor(new Elementa.ConstantColorConstraint(color));
 
@@ -39,25 +39,15 @@ const addTableRow = (comp, rowName, color) => {
 };
 
 /**
- * 
  * @param {Elementa.UIRoundedRectangle} comp 
  * @param {number} index 
  */
 const deleteRow = (comp, index) => {
   const kids = [...comp.children];
   kids.splice(index, 1);
-  comp.addChildren(kids);
-};
-
-/**
- * 
- * @param {Elementa.UIRoundedRectangle} table 
- */
-const clearTable = table => {
-  const line1 = table.children[0];
-  table
+  comp
     .clearChildren()
-    .addChild(line1);
+    .addChildren(kids);
 };
 
 /**
@@ -65,14 +55,19 @@ const clearTable = table => {
  * @param {string} rowName 
  * @param {*} value adds to row name
  */
-const setRowValue = (comp, index, name, value) => {
+const setRowValue = (comp, index, name, value) => { // causing problems
   comp.children[index].setText(`${name} ${value}`);
+};
+
+const setAllInactive = (comp) => {
+  if (comp.children.length) comp.children.forEach(child => this.setAllInactive(child));
+  if (comp instanceof Elementa.UITextInput) comp.setActive(false);
 };
 
 export {
   generateBlock,
   addTableRow,
   deleteRow,
-  clearTable,
-  setRowValue
+  setRowValue,
+  setAllInactive
 };

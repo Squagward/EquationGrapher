@@ -38,9 +38,7 @@ const createNewInput = () => {
  * @param {Elementa.UIRoundedRectangle} bg background object
  * @returns {Elementa.UITextInput} the text input
  */
-const getInput = bg => {
-  if (bg.children[0] instanceof Elementa.UITextInput) return bg.children[0];
-};
+const getInput = bg => bg.children[0]; // causing problems
 
 export {
   createNewInput,

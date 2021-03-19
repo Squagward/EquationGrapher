@@ -1,7 +1,7 @@
 import * as Elementa from "Elementa/index";
 import { Formula } from "../fparser";
 import { createNewInput, getInput } from "./equationBlocks";
-import { addTableRow, clearTable, deleteRow, generateBlock, setRowValue } from "./table";
+import { addTableRow, deleteRow, generateBlock, setRowValue, setAllInactive } from "./table";
 const Color = Java.type("java.awt.Color");
 
 export default class Grid {
@@ -48,21 +48,21 @@ export default class Grid {
     this.lines = [];
 
     // creating a background to put in equations
-    this.inputBackground = createNewInput().setY(new Elementa.CenterConstraint());
+    this.inputBackground = createNewInput().setY(new Elementa.PixelConstraint(0, false));
     this.equationInput = getInput(this.inputBackground);
 
     // container holding all of the equation inputs & backgrounds
     this.inputContainer = new Elementa.UIContainer()
       .setX(new Elementa.PixelConstraint(10, false))
       .setY(new Elementa.CenterConstraint())
-      .setWidth(new Elementa.RelativeConstraint())
+      .setWidth(new Elementa.ChildBasedSizeConstraint())
       .setHeight(new Elementa.ChildBasedMaxSizeConstraint())
       .addChild(this.inputBackground);
 
     // table of x, y1, y2 etc values
     this.table = generateBlock();
     // add x row first
-    addTableRow(this.table, 0, new Color(0, 0, 0));
+    addTableRow(this.table, new Color(0, 0, 0));
 
     this.window = new Elementa.Window()
       .addChildren(
@@ -79,25 +79,29 @@ export default class Grid {
       switch (key) {
         case Keyboard.KEY_RETURN: {
           this.graphing = true;
-          if (this.table.children.length > this.lines.length) {
-            const [r, g, b] = this.calculatePoints();
-            addTableRow(
-              this.table,
-              `Y${this.table.children.length}`,
-              new Color(r / 255, g / 255, b / 255)
-            );
+          let index = 0;
+          while (this.inputContainer.children.length > this.table.children.length - 1) {
+            this.createLines();
+            if (getInput(this.inputContainer.children[index]).getText()) {
+              let { r, g, b } = this.getLineColor(index);
+              addTableRow(
+                this.table,
+                new Color(r / 255, g / 255, b / 255)
+              );
+            }
+            index++;
           }
           break;
         }
+        case Keyboard.KEY_DELETE: {
+          this.inputContainer.clearChildren();
+          addTableRow(this.table, new Color(0, 0, 0));
+        }
         case Keyboard.KEY_DOWN: { // add button to add and delete graphs plssss
           this.inputContainer.addChild(createNewInput());
-          break;
-        }
-        case Keyboard.KEY_DELETE: {
-          this.equationInput.setText("");
-          clearTable(this.table);
         }
         default: {
+          this.table.clearChildren();
           // stop graphing if any other key is pressed
           this.graphing = false;
           this.lines = [];
@@ -114,30 +118,29 @@ export default class Grid {
         this.xMax
       );
 
-      // update the x row on the table
-      setRowValue(this.table, 0, "X", mappedX.toFixed(3));
+      for (let index = 0; index < this.inputContainer.children.length; index++) {
+        if (!this.lines.length) return;
+        if (!getInput(this.inputContainer.children[index]).getText()) continue;
+        let { line, } = this.lines[index];
 
-      this.table.children.forEach((child, index) => {
-        if (index === 0) return;
-
-        const [vals,] = this.lines[index - 1]; // causing issues REEEE
-        //org.mozilla.javascript.EcmaError: TypeError: Cannot read property "0" from undefined (file:/grid.js#122)
-
-        const closest = vals.reduce((a, b) => {
+        let closest = line.reduce((a, b) => {
           return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
             ? { x: b.mathX, y: b.mathY }
             : { x: a.x, y: a.y };
-        });
+        }, { x: 0, y: 0 }); // idk somehow this fixed it lmao now actually goes -10 to 10
+
+        let fixedCoords = this.graphToScreenCoords(closest.x, closest.y);
 
         Renderer.drawCircle(
-          Renderer.DARK_PURPLE,
-          this.graphToScreenCoords(closest.x).x,
-          this.graphToScreenCoords(closest.y).y,
+          Renderer.RED,
+          fixedCoords.x,
+          fixedCoords.y,
           3,
           10
         );
-        setRowValue(this.table, index, `Y${index}`, closest.y.toFixed(3));
-      });
+        setRowValue(this.table, 0, "X", closest.x.toFixed(3));
+        setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3));
+      }
     });
 
     this.gui.registerScrolled((mx, my, dir) => {
@@ -160,12 +163,12 @@ export default class Grid {
       this.xOffset = MathLib.map(0, this.xMin, this.xMax, this.left, this.right);
       this.yOffset = MathLib.map(0, this.yMin, this.yMax, this.bottom, this.top);
 
-      this.recalculatePoints();
+      this.updateLines();
       this.recalculateTicks();
     });
 
     this.gui.registerClicked((mx, my, btn) => {
-      this.setAllInactive(this.window);
+      setAllInactive(this.window);
       this.window.mouseClick(mx, my, btn);
     });
   }
@@ -175,11 +178,6 @@ export default class Grid {
     this.drawAxes();
     this.recalculateTicks();
     if (this.graphing) this.graph();
-  }
-
-  setAllInactive(comp) {
-    if (comp.children.length) comp.children.forEach(child => this.setAllInactive(child));
-    if (comp instanceof Elementa.UITextInput) comp.setActive(false);
   }
 
   drawAxes() {
@@ -230,44 +228,30 @@ export default class Grid {
    * Called only when the user presses enter.
    * @returns {number[]} colors used for table text color
    */
-  calculatePoints() {
+  createLines() {
     this.lines = [];
-    /**
-     * This algorithm was heavily influenced by 
-     * https://www.youtube.com/watch?v=E-_Lc6FrDRw
-     */
-
     for (let child of this.inputContainer.children) { // loop through every array of points
       let input = getInput(child);
+      if (!input.getText()) continue;
       this.parser = new Formula(input.getText());
 
-      let tempLine = [];
+      let tempLine = this.calculatePoints();
 
-      for (let i = 0; i < this.width; i++) {
-        let percentX = i / (this.width - 1);
-        let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
-
-        let mathY = this.parser.evaluate({ x: mathX });
-
-        let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
-        let x = this.left + percentX * this.width;
-        let y = this.bottom - percentY * this.height;
-
-        tempLine.push({ x, y, mathX, mathY }); // add the point to the tempLine
-      }
-
-      let color = this.assignColor();
-      this.lines.push([tempLine, Renderer.color(color.r, color.g, color.b)]); // assign a random color
-      return color;
+      let { r, g, b } = this.assignColor();
+      this.lines.push({ line: tempLine, color: { r, g, b } }); // assign a random color
     }
+  }
+
+  getLineColor(index) {
+    return this.lines[index].color;
   }
 
   /**
    * Called whenever the user scrolls. Needs to be a separate function
    * in order to not have rapid color changing lines
    */
-  recalculatePoints() {
-    let colors = this.lines.map(([l, c]) => c); // grab the colors for each line then remove lines
+  updateLines() {
+    const colors = this.lines.map(({ color }) => color); // grab the colors for each line then remove lines
     this.lines = [];
 
     // rebuild the lines
@@ -276,27 +260,36 @@ export default class Grid {
       let input = getInput(child);
       this.parser = new Formula(input.getText());
 
-      let tempLine = [];
+      let tempLine = this.calculatePoints();
 
-      for (let i = 0; i < this.width; i++) {
-        let percentX = i / (this.width - 1);
-        let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
-
-        let mathY = this.parser.evaluate({ x: mathX });
-
-        let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
-        let x = this.left + percentX * this.width;
-        let y = this.bottom - percentY * this.height;
-
-        tempLine.push({ x, y, mathX, mathY });
-      }
-      this.lines.push([tempLine, colors[i]]); // assign the color that was there previously
+      this.lines.push({ line: tempLine, color: colors[i] }); // assign the color that was there previously
     }
+  }
+
+  calculatePoints() {
+    const tempLine = [];
+    /**
+     * This algorithm was heavily influenced by 
+     * https://www.youtube.com/watch?v=E-_Lc6FrDRw
+     */
+    for (let i = 0; i < this.width; i++) {
+      let percentX = i / (this.width - 1);
+      let mathX = percentX * (this.xMax - this.xMin) + this.xMin;
+
+      let mathY = this.parser.evaluate({ x: mathX });
+
+      let percentY = (mathY - this.yMin) / (this.yMax - this.yMin);
+      let x = this.left + percentX * this.width;
+      let y = this.bottom - percentY * this.height;
+
+      tempLine.push({ x, y, mathX, mathY });
+    }
+    return tempLine;
   }
 
   graph() {
     if (!this.graphing) return;
-    for ([line, color] of this.lines) { // loop through each line on the graph
+    for ({ line, color: { r, g, b } } of this.lines) { // loop through each line on the graph
       for (let i = 0; i < line.length - 1; i++) {
         if (
           line[i].y >= this.top &&      // Checking to make sure the
@@ -305,7 +298,7 @@ export default class Grid {
           line[i + 1].y <= this.bottom
         )
           Renderer.drawLine(
-            color,
+            Renderer.color(r, g, b),
             line[i].x,
             line[i].y,
             line[i + 1].x,
