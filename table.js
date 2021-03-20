@@ -40,11 +40,15 @@ const addTableRow = (comp, color, text = "X") => {
 
 /**
  * @param {Elementa.UIRoundedRectangle} comp 
- * @param {string} rowName 
- * @param {*} value adds to row name
+ * @param {number} index 
+ * @param {string} name 
+ * @param {*} value
+ * @param {Color} color
  */
-const setRowValue = (comp, index, name, value) => { // causing problems
-  comp.children[index].setText(`${name} ${value}`);
+const setRowValue = (comp, index, name, value, color) => { // causing problems
+  comp.children[index]
+    .setText(`${name} ${value}`)
+    .setColor(new Elementa.ConstantColorConstraint(color));
 };
 
 export {

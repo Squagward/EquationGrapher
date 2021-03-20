@@ -1,10 +1,10 @@
-# EquationGraph
+# EquationGrapher
 
 > Basic equation grapher for ChatTriggers
 
 # How to use
 
-- /graph to open the graphing gui.
+- `/graph` to open the graphing gui.
 - Click on a text input on the left-hand side of the screen.
 - Type in your equation the only variable that will work is `x`,
   but you can use `Math` class constants (`e`, `pi`, etc)

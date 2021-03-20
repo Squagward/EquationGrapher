@@ -1,9 +1,9 @@
 {
-	"name": "EquationGraph",
+	"name": "EquationGrapher",
 	"creator": "Squagward",
 	"description": "Basic graphing calculator for ChatTriggers. See the README.md for more info.",
 	"helpMessage": "\n/graph\nRead the README.md file for information on how to use.\n",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"entry": "index.js",
 	"$schema": "../CTAutocomplete/schema.json"
 }

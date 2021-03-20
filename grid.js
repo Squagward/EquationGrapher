@@ -89,13 +89,11 @@ export default class Grid {
             this.inputContainer.children.length > this.table.children.length - 1 &&
             index < this.inputContainer.children.length
           ) {
-            if (firstBorn(this.inputContainer.children[index])?.getText()?.length) {
-              let { r, g, b } = this.getLineColor(index);
-              addTableRow(
-                this.table,
-                new Color(r / 255, g / 255, b / 255)
-              );
-            }
+            let { r, g, b } = this.getLineColor(index);
+            addTableRow(
+              this.table,
+              new Color(r / 255, g / 255, b / 255)
+            );
             index++;
           }
           break;
@@ -128,7 +126,7 @@ export default class Grid {
       for (let index = 0; index < this.inputContainer.children.length; index++) {
         if (!this.lines.length) return;
         try {
-          let { line, } = this.lines[index];
+          let { line, color } = this.lines[index];
 
           let closest = line.reduce((a, b) => {
             return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
@@ -146,8 +144,8 @@ export default class Grid {
             10
           );
           if (index === 0)
-            setRowValue(this.table, index, "X", closest.x.toFixed(3));
-          setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3));
+            setRowValue(this.table, index, "X", closest.x.toFixed(3), new Color(0, 0, 0));
+          setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3), new Color(color.r / 255, color.g / 255, color.b / 255));
           // on pressing enter, TypeError: Cannot call method "setText" of undefined
           // on move mouse, TypeError: Cannot call method "toFixed" of undefined
 
@@ -193,9 +191,7 @@ export default class Grid {
 
   open() {
     this.gui.open();
-    this.drawAxes();
     this.recalculateTicks();
-    if (this.graphing) this.graph();
   }
 
   drawAxes() {
@@ -216,7 +212,6 @@ export default class Grid {
 
   draw() {
     this.window.draw();
-    this.drawAxes();
     this.graph();
   }
 
@@ -311,6 +306,7 @@ export default class Grid {
   }
 
   graph() {
+    this.drawAxes();
     if (!this.graphing) return;
     for ({ line, color: { r, g, b } } of this.lines) { // loop through each line on the graph
       for (let i = 0; i < line.length - 1; i++) {

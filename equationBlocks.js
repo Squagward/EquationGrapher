@@ -1,11 +1,19 @@
 import * as Elementa from "Elementa/index";
+import { firstBorn } from "./utils";
 const Color = Java.type("java.awt.Color");
 
 const createNewInput = () => {
+  const child = new Elementa.UITextInput("")
+    .setX(new Elementa.PixelConstraint(3, false))
+    .setY(new Elementa.CenterConstraint())
+    .setWidth(new Elementa.PixelConstraint(100, false))
+    .setHeight(new Elementa.PixelConstraint(20, false));
+
   const background = new Elementa.UIRoundedRectangle(2)
     .setColor(new Elementa.ConstantColorConstraint(new Color(0.3, 0.3, 0.3)))
     .setX(new Elementa.PixelConstraint(0, false))
-    .setY(new Elementa.SiblingConstraint(5))// 3 margin
+    .setY(new Elementa.SiblingConstraint(5))
+    .addChild(child)
     .setWidth(new Elementa.AdditiveConstraint(
       new Elementa.ChildBasedMaxSizeConstraint(),
       new Elementa.PixelConstraint(6, false)
@@ -21,15 +29,9 @@ const createNewInput = () => {
       background.setColor(new Elementa.ConstantColorConstraint(new Color(0.3, 0.3, 0.3)));
     })
     .onMouseClick((x, y, btn) => {
-      background.children[0].setActive(true);
-    })
-    .addChild(
-      new Elementa.UITextInput("")
-        .setX(new Elementa.PixelConstraint(3, false))
-        .setY(new Elementa.CenterConstraint())
-        .setWidth(new Elementa.PixelConstraint(100, false))
-        .setHeight(new Elementa.PixelConstraint(20, false))
-    );
+      child.setActive(true);
+    });
+
   return background;
 };
 
