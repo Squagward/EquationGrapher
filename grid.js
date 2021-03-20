@@ -1,7 +1,8 @@
 import * as Elementa from "Elementa/index";
 import { Formula } from "../fparser";
-import { createNewInput, getInput } from "./equationBlocks";
-import { addTableRow, deleteRow, generateBlock, setRowValue, setAllInactive } from "./table";
+import { createNewInput } from "./equationBlocks";
+import { addTableRow, generateBlock, setRowValue } from "./table";
+import { firstBorn, getKeyByValue, setAllInactive } from "./utils";
 const Color = Java.type("java.awt.Color");
 
 export default class Grid {
@@ -49,7 +50,7 @@ export default class Grid {
 
     // creating a background to put in equations
     this.inputBackground = createNewInput().setY(new Elementa.PixelConstraint(0, false));
-    this.equationInput = getInput(this.inputBackground);
+    this.equationInput = firstBorn(this.inputBackground);
 
     // container holding all of the equation inputs & backgrounds
     this.inputContainer = new Elementa.UIContainer()
@@ -75,33 +76,33 @@ export default class Grid {
 
     this.gui.registerKeyTyped((char, key) => {
       this.window.keyType(char, key);
-
       switch (key) {
         case Keyboard.KEY_RETURN: {
           this.graphing = true;
+          setAllInactive(this.window);
+
+          this.createLines();
+
           let index = 0;
           while (this.inputContainer.children.length > this.table.children.length - 1) {
-            this.createLines();
-            if (getInput(this.inputContainer.children[index]).getText()) {
-              let { r, g, b } = this.getLineColor(index);
-              addTableRow(
-                this.table,
-                new Color(r / 255, g / 255, b / 255)
-              );
-            }
+            let { r, g, b } = this.getLineColor(index);
+            addTableRow(
+              this.table,
+              new Color(r / 255, g / 255, b / 255)
+            );
             index++;
           }
           break;
         }
         case Keyboard.KEY_DELETE: {
           this.inputContainer.clearChildren();
-          addTableRow(this.table, new Color(0, 0, 0));
         }
         case Keyboard.KEY_DOWN: { // add button to add and delete graphs plssss
           this.inputContainer.addChild(createNewInput());
         }
         default: {
           this.table.clearChildren();
+          addTableRow(this.table, new Color(0, 0, 0));
           // stop graphing if any other key is pressed
           this.graphing = false;
           this.lines = [];
@@ -120,7 +121,6 @@ export default class Grid {
 
       for (let index = 0; index < this.inputContainer.children.length; index++) {
         if (!this.lines.length) return;
-        if (!getInput(this.inputContainer.children[index]).getText()) continue;
         let { line, } = this.lines[index];
 
         let closest = line.reduce((a, b) => {
@@ -138,7 +138,8 @@ export default class Grid {
           3,
           10
         );
-        setRowValue(this.table, 0, "X", closest.x.toFixed(3));
+        if (index === 0)
+          setRowValue(this.table, 0, "X", closest.x.toFixed(3));
         setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3));
       }
     });
@@ -170,6 +171,10 @@ export default class Grid {
     this.gui.registerClicked((mx, my, btn) => {
       setAllInactive(this.window);
       this.window.mouseClick(mx, my, btn);
+    });
+
+    register("guiOpened", (e) => {
+      if (Client.currentGui.get() !== this.gui) setAllInactive(this.window);
     });
   }
 
@@ -226,23 +231,22 @@ export default class Grid {
 
   /**
    * Called only when the user presses enter.
-   * @returns {number[]} colors used for table text color
    */
   createLines() {
     this.lines = [];
     for (let child of this.inputContainer.children) { // loop through every array of points
-      let input = getInput(child);
-      if (!input.getText()) continue;
+      let input = firstBorn(child); // somehow is infinitely being called????????
+      if (!input?.getText()) continue;
       this.parser = new Formula(input.getText());
 
       let tempLine = this.calculatePoints();
 
-      let { r, g, b } = this.assignColor();
-      this.lines.push({ line: tempLine, color: { r, g, b } }); // assign a random color
+      this.lines.push({ line: tempLine, color: this.assignColor() }); // assign a random color
     }
   }
 
   getLineColor(index) {
+    // print(JSON.stringify(this.lines));
     return this.lines[index].color;
   }
 
@@ -257,7 +261,8 @@ export default class Grid {
     // rebuild the lines
     for (let i = 0; i < this.inputContainer.children.length; i++) {
       let child = this.inputContainer.children[i];
-      let input = getInput(child);
+      let input = firstBorn(child);
+      if (!input?.getText()) continue;
       this.parser = new Formula(input.getText());
 
       let tempLine = this.calculatePoints();
@@ -284,6 +289,7 @@ export default class Grid {
 
       tempLine.push({ x, y, mathX, mathY });
     }
+
     return tempLine;
   }
 

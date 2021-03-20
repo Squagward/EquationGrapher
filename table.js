@@ -40,18 +40,6 @@ const addTableRow = (comp, color, text = "X") => {
 
 /**
  * @param {Elementa.UIRoundedRectangle} comp 
- * @param {number} index 
- */
-const deleteRow = (comp, index) => {
-  const kids = [...comp.children];
-  kids.splice(index, 1);
-  comp
-    .clearChildren()
-    .addChildren(kids);
-};
-
-/**
- * @param {Elementa.UIRoundedRectangle} comp 
  * @param {string} rowName 
  * @param {*} value adds to row name
  */
@@ -59,15 +47,8 @@ const setRowValue = (comp, index, name, value) => { // causing problems
   comp.children[index].setText(`${name} ${value}`);
 };
 
-const setAllInactive = (comp) => {
-  if (comp.children.length) comp.children.forEach(child => this.setAllInactive(child));
-  if (comp instanceof Elementa.UITextInput) comp.setActive(false);
-};
-
 export {
   generateBlock,
   addTableRow,
-  deleteRow,
-  setRowValue,
-  setAllInactive
+  setRowValue
 };
