@@ -48,17 +48,16 @@ export default class Grid {
     // array of all the equation lines
     this.lines = [];
 
-    // creating a background to put in equations
-    this.inputBackground = createNewInput().setY(new Elementa.PixelConstraint(0, false));
-    this.equationInput = firstBorn(this.inputBackground);
-
     // container holding all of the equation inputs & backgrounds
     this.inputContainer = new Elementa.UIContainer()
       .setX(new Elementa.PixelConstraint(10, false))
       .setY(new Elementa.CenterConstraint())
       .setWidth(new Elementa.ChildBasedSizeConstraint())
       .setHeight(new Elementa.ChildBasedMaxSizeConstraint())
-      .addChild(this.inputBackground);
+      .addChild(
+        createNewInput()
+          .setY(new Elementa.PixelConstraint(0, false))
+      );
 
     // table of x, y1, y2 etc values
     this.table = generateBlock();
@@ -81,15 +80,22 @@ export default class Grid {
           this.graphing = true;
           setAllInactive(this.window);
 
+          this.removeEmptyInputs();
+
           this.createLines();
 
           let index = 0;
-          while (this.inputContainer.children.length > this.table.children.length - 1) {
-            let { r, g, b } = this.getLineColor(index);
-            addTableRow(
-              this.table,
-              new Color(r / 255, g / 255, b / 255)
-            );
+          while (
+            this.inputContainer.children.length > this.table.children.length - 1 &&
+            index < this.inputContainer.children.length
+          ) {
+            if (firstBorn(this.inputContainer.children[index])?.getText()?.length) {
+              let { r, g, b } = this.getLineColor(index);
+              addTableRow(
+                this.table,
+                new Color(r / 255, g / 255, b / 255)
+              );
+            }
             index++;
           }
           break;
@@ -121,26 +127,33 @@ export default class Grid {
 
       for (let index = 0; index < this.inputContainer.children.length; index++) {
         if (!this.lines.length) return;
-        let { line, } = this.lines[index];
+        try {
+          let { line, } = this.lines[index];
 
-        let closest = line.reduce((a, b) => {
-          return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
-            ? { x: b.mathX, y: b.mathY }
-            : { x: a.x, y: a.y };
-        }, { x: 0, y: 0 }); // idk somehow this fixed it lmao now actually goes -10 to 10
+          let closest = line.reduce((a, b) => {
+            return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
+              ? { x: b.mathX, y: b.mathY }
+              : { x: a.x, y: a.y };
+          }, { x: 0, y: 0 }); // idk somehow this fixed it lmao now actually goes -10 to 10
 
-        let fixedCoords = this.graphToScreenCoords(closest.x, closest.y);
+          let fixedCoords = this.gridToScreen(closest.x, closest.y);
 
-        Renderer.drawCircle(
-          Renderer.RED,
-          fixedCoords.x,
-          fixedCoords.y,
-          3,
-          10
-        );
-        if (index === 0)
-          setRowValue(this.table, 0, "X", closest.x.toFixed(3));
-        setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3));
+          Renderer.drawCircle(
+            Renderer.RED,
+            fixedCoords.x,
+            fixedCoords.y,
+            3,
+            10
+          );
+          if (index === 0)
+            setRowValue(this.table, index, "X", closest.x.toFixed(3));
+          setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3));
+          // on pressing enter, TypeError: Cannot call method "setText" of undefined
+          // on move mouse, TypeError: Cannot call method "toFixed" of undefined
+
+        } catch (e) {
+          // print(`${e.name}: ${e.message}\n${e.stack}`);
+        }
       }
     });
 
@@ -235,8 +248,7 @@ export default class Grid {
   createLines() {
     this.lines = [];
     for (let child of this.inputContainer.children) { // loop through every array of points
-      let input = firstBorn(child); // somehow is infinitely being called????????
-      if (!input?.getText()) continue;
+      let input = firstBorn(child);
       this.parser = new Formula(input.getText());
 
       let tempLine = this.calculatePoints();
@@ -245,8 +257,11 @@ export default class Grid {
     }
   }
 
+  /**
+   * @param {number} index 
+   * @returns {{r: number, g: number, b: number}}
+   */
   getLineColor(index) {
-    // print(JSON.stringify(this.lines));
     return this.lines[index].color;
   }
 
@@ -262,7 +277,6 @@ export default class Grid {
     for (let i = 0; i < this.inputContainer.children.length; i++) {
       let child = this.inputContainer.children[i];
       let input = firstBorn(child);
-      if (!input?.getText()) continue;
       this.parser = new Formula(input.getText());
 
       let tempLine = this.calculatePoints();
@@ -271,6 +285,9 @@ export default class Grid {
     }
   }
 
+  /**
+   * @returns {{x: number, y: number, mathX: number, mathY: number}[]}
+   */
   calculatePoints() {
     const tempLine = [];
     /**
@@ -315,6 +332,9 @@ export default class Grid {
     }
   }
 
+  /**
+   * @returns {{r: number, g: number, b: number}}
+   */
   assignColor() {
     let r = Math.random() * 255;
     let g = Math.random() * 255;
@@ -322,7 +342,17 @@ export default class Grid {
     return { r, g, b };
   }
 
-  graphToScreenCoords(x, y) {
+  removeEmptyInputs() {
+    // get all empty inputs
+    const empty = this.inputContainer.children
+      .map(bg => firstBorn(bg))
+      .filter(text => !text.getText().length);
+
+    if (empty.length && this.inputContainer.children.length > empty.length)
+      empty.forEach(comp => this.inputContainer.removeChild(comp.parent));
+  }
+
+  gridToScreen(x, y) {
     const percentX = (x - this.xMin) / (this.xMax - this.xMin);
     const percentY = (y - this.yMin) / (this.yMax - this.yMin);
     const outX = this.left + percentX * this.width;
