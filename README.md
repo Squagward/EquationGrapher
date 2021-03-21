@@ -11,7 +11,8 @@
   - e.g. `sin(x)`, `x*sqrt(10)` etc work
     - I have made `ln` relate to the natural log, and `log` relate to log base 10
   - Also note: non real values will show up as `NaN`
-- To add more graphs, press `DOWN ARROW KEY` and enter in your new equation
+- To add more lines, press the green box to the right of the inputs
+- To remove a line, press the red box to the right of the inputs
 - When you want to graph, press `ENTER`
 - You can zoom in or out using the scroll wheel
 - **IMPORTANT**
@@ -46,4 +47,3 @@ The module version of it can be found here:
 
 - Allow for holding down keys
 - Add zooming according to mouse position, not just according to the origin
-- Add x boxes to delete equation inputs

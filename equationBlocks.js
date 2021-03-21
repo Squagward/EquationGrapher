@@ -25,8 +25,18 @@ const createNewInput = () => {
     .setHeight(new Elementa.PixelConstraint(10, false))
     .setColor(new Elementa.ConstantColorConstraint(new Color(1, 0, 0)))
     .onMouseClick((mx, my, btn) => {
-      if (deleteBlock.parent.parent.children.length > 1)
-        deleteBlock.parent.parent.removeChild(deleteBlock.parent);
+      const container = deleteBlock.parent.parent;
+      const table = container.parent.children[2];
+      const thisIndex = container.children
+        .findIndex(child => child.children[2] === deleteBlock);
+      if (container.children.length > 1) {
+        if (table.children.length > 1) {
+          table.removeChild(table.children[thisIndex + 1]);
+        }
+        container.removeChild(deleteBlock.parent);
+      } else {
+        container.children[thisIndex].children[0].setText("");
+      }
     });
 
   const background = new Elementa.UIRoundedRectangle(2)

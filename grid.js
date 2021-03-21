@@ -178,10 +178,22 @@ export default class Grid {
 
     this.gui.registerClicked((mx, my, btn) => {
       setAllInactive(this.window);
+
+      if (
+        this.inputContainer.children
+          .some(input => input.children[2].isHovered()) // red box
+      ) {
+        this.table.clearChildren();
+        addTableRow(this.table, new Color(0, 0, 0));
+        // stop graphing if any other key is pressed
+        this.graphing = false;
+        this.lines = [];
+      }
+
       this.window.mouseClick(mx, my, btn);
     });
 
-    register("guiOpened", (e) => {
+    register("guiOpened", e => {
       if (Client.currentGui.get() !== this.gui) setAllInactive(this.window);
     });
   }
