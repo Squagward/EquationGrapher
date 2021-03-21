@@ -17,7 +17,7 @@ register("command", () => {
 }).setName("graph");
 
 // add ln and log
-Formula.addMappings([
-  { "ln": "log" },
-  { "log": "log10" }
-]);
+Formula.addMappings({
+  "ln": "log",
+  "log": "log10"
+});

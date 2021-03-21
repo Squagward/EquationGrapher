@@ -3,7 +3,7 @@
 	"creator": "Squagward",
 	"description": "Basic graphing calculator for ChatTriggers. See the README.md for more info.",
 	"helpMessage": "\n/graph\nRead the README.md file for information on how to use.\n",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"entry": "index.js",
 	"requires": ["fparser"],
 	"$schema": "../CTAutocomplete/schema.json"

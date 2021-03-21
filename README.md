@@ -25,7 +25,7 @@ you can open a pull request or contact me on Discord (Squagward#5513)
 
 # Github Repository
 
-> https://github.com/Squagward/Graph
+> https://github.com/Squagward/EquationGrapher
 
 # Credits
 
