@@ -1,4 +1,4 @@
-import * as Elementa from "Elementa/index";
+import * as Elementa from "../Elementa";
 const Color = Java.type("java.awt.Color");
 
 const generateBlock = () => {
@@ -17,8 +17,8 @@ const generateBlock = () => {
 
 /**
  * @param {Elementa.UIRoundedRectangle} comp 
- * @param {string} rowName the start of the text on that row
- * @param {Color} color
+ * @param {Color} color 
+ * @param {string} text 
  */
 const addTableRow = (comp, color, text = "X") => {
   const row = new Elementa.UIText(text)

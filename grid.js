@@ -1,8 +1,9 @@
-import * as Elementa from "Elementa/index";
+import * as Elementa from "../Elementa";
 import { Formula } from "../fparser";
 import { createNewInput } from "./equationBlocks";
 import { addTableRow, generateBlock, setRowValue } from "./table";
-import { firstBorn, getKeyByValue, setAllInactive } from "./utils";
+import { firstBorn, setAllInactive, assignColor } from "./utils";
+
 const Color = Java.type("java.awt.Color");
 
 export default class Grid {
@@ -81,6 +82,10 @@ export default class Grid {
           setAllInactive(this.window);
 
           this.removeEmptyInputs();
+          if (
+            this.inputContainer.children.length === 1 &&
+            firstBorn(this.inputContainer.children[0]).getText() === ""
+          ) break;
 
           this.createLines();
 
@@ -97,12 +102,6 @@ export default class Grid {
             index++;
           }
           break;
-        }
-        case Keyboard.KEY_DELETE: {
-          this.inputContainer.clearChildren();
-        }
-        case Keyboard.KEY_DOWN: { // add button to add and delete graphs plssss
-          this.inputContainer.addChild(createNewInput());
         }
         default: {
           this.table.clearChildren();
@@ -125,33 +124,31 @@ export default class Grid {
 
       for (let index = 0; index < this.inputContainer.children.length; index++) {
         if (!this.lines.length) return;
-        try {
-          let { line, color } = this.lines[index];
+        let { line, color: { r, g, b } } = this.lines[index];
 
-          let closest = line.reduce((a, b) => {
-            return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
-              ? { x: b.mathX, y: b.mathY }
-              : { x: a.x, y: a.y };
-          }, { x: 0, y: 0 }); // idk somehow this fixed it lmao now actually goes -10 to 10
+        let closest = line.reduce((a, b) => {
+          return Math.abs(b.mathX - mappedX) < Math.abs(a.x - mappedX)
+            ? { x: b.mathX, y: b.mathY }
+            : { x: a.x, y: a.y };
+        }, { x: Infinity, y: Infinity }); // ok now it doesnt always go to (0, 0)
 
-          let fixedCoords = this.gridToScreen(closest.x, closest.y);
+        let fixedCoords = this.gridToScreen(closest.x, closest.y);
 
-          Renderer.drawCircle(
-            Renderer.RED,
-            fixedCoords.x,
-            fixedCoords.y,
-            3,
-            10
-          );
-          if (index === 0)
-            setRowValue(this.table, index, "X", closest.x.toFixed(3), new Color(0, 0, 0));
-          setRowValue(this.table, index + 1, `Y${index + 1}`, closest.y.toFixed(3), new Color(color.r / 255, color.g / 255, color.b / 255));
-          // on pressing enter, TypeError: Cannot call method "setText" of undefined
-          // on move mouse, TypeError: Cannot call method "toFixed" of undefined
-
-        } catch (e) {
-          // print(`${e.name}: ${e.message}\n${e.stack}`);
-        }
+        Renderer.drawCircle(
+          Renderer.RED,
+          fixedCoords.x,
+          fixedCoords.y,
+          3,
+          10
+        );
+        if (index === 0)
+          setRowValue(this.table, index, "X", closest.x.toFixed(3), new Color(0, 0, 0));
+        setRowValue(
+          this.table, index + 1,
+          `Y${index + 1}`,
+          closest.y.toFixed(3),
+          new Color(r / 255, g / 255, b / 255)
+        );
       }
     });
 
@@ -248,7 +245,7 @@ export default class Grid {
 
       let tempLine = this.calculatePoints();
 
-      this.lines.push({ line: tempLine, color: this.assignColor() }); // assign a random color
+      this.lines.push({ line: tempLine, color: assignColor() }); // assign a random color
     }
   }
 
@@ -265,6 +262,7 @@ export default class Grid {
    * in order to not have rapid color changing lines
    */
   updateLines() {
+    if (!this.lines.length) return;
     const colors = this.lines.map(({ color }) => color); // grab the colors for each line then remove lines
     this.lines = [];
 
@@ -326,16 +324,6 @@ export default class Grid {
           );
       }
     }
-  }
-
-  /**
-   * @returns {{r: number, g: number, b: number}}
-   */
-  assignColor() {
-    let r = Math.random() * 255;
-    let g = Math.random() * 255;
-    let b = Math.random() * 255;
-    return { r, g, b };
   }
 
   removeEmptyInputs() {

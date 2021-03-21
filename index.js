@@ -1,5 +1,5 @@
 /// <reference types="../CTAutocomplete" />
-/// <reference types="./depTypes" />
+/// <reference types="../Elementa" />
 /// <reference lib="es2015" />
 
 import Grid from "./grid";
