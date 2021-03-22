@@ -83,8 +83,8 @@ export default class Grid {
 
           this.removeEmptyInputs();
           if (
-            this.inputContainer.children.length === 1 &&
-            firstBorn(this.inputContainer.children[0]).getText() === ""
+            this.inputContainer.children
+              .every(child => firstBorn(child).getText() === "") // check if all are empty
           ) break;
 
           this.createLines();
@@ -124,6 +124,7 @@ export default class Grid {
 
       for (let index = 0; index < this.inputContainer.children.length; index++) {
         if (!this.lines.length) return;
+        if (!firstBorn(this.inputContainer.children[index]).getText()) continue;
         let { line, color: { r, g, b } } = this.lines[index];
 
         let closest = line.reduce((a, b) => {
@@ -142,7 +143,7 @@ export default class Grid {
           10
         );
         if (index === 0)
-          setRowValue(this.table, index, "X", closest.x.toFixed(3), new Color(0, 0, 0));
+          setRowValue(this.table, 0, "X", closest.x.toFixed(3), new Color(0, 0, 0));
         setRowValue(
           this.table, index + 1,
           `Y${index + 1}`,
